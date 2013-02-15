@@ -26,6 +26,7 @@ import mechanize
 from pyquery import PyQuery as PQ
 
 import logging
+import time
 import datetime
 
 DEBUG = True
@@ -35,6 +36,16 @@ if DEBUG:
 else:
 	logging.basicConfig(level=None)
 logger = logging.getLogger("AirQ")
+
+def datetimeInGMT2():
+	t = time.time()
+	
+	if time.localtime(t).tm_isdst and time.daylight:
+		offset = time.altzone
+	else:
+		offset = time.timezone
+		
+	return datetime.datetime.fromtimestamp(t+(7200+offset))
 
 class AirQ():
 	def __init__(self, **kwargs):
@@ -75,7 +86,7 @@ class AirQ():
 			sensors = self.sensors
 		
 		if sensors:
-			now = datetime.datetime.now()
+			now = datetimeInGMT2()
 			hour = str(now.hour-1)
 			pv = now.strftime("%Y%m%d"+hour+"00")
 			results = {}
@@ -90,7 +101,14 @@ class AirQ():
 				
 				if sensor == "stationindex":
 					q = PQ(response.read())
-					results[sensor]['current'] = q('area').attr('onmouseover').split(',')[-1].strip("');")
+
+					results[sensor]['current'] = q('area').attr('onmouseover')
+					if results[sensor]['current']:
+							results[sensor]['current'] = results[sensor]['current'].split(',')[-1].strip("');")
+					else:
+							results[sensor]['current'] = None
+
+					
 				else:
 					results[sensor]['hours'] = {}
 					url = "http://www.ilmanlaatu.fi/php/table/observationsInTable.php?step=3600&today=1&timesequence=23&time="+now.strftime("%Y%m%d%H")+"&station="+self.stationID
@@ -122,3 +140,10 @@ class AirQ():
 			return False
 
 		
+a = AirQ(rs="430", ss="186") # Turku = 430, Turun kauppatori = 186
+sensors = a.getSensors() # Get sensors
+values = a.getSensorValues() # Get sensor values
+print values # Prints the values
+
+for sensor in sensors: # For all sensors 
+	print sensor, ' : ' ,values[sensor]['current'] # Print the sensor and its current value
