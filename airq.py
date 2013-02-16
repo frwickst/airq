@@ -118,19 +118,23 @@ class AirQ():
 					q = PQ(response.read())
 					hours = q('table:first tr')[1:] # First entry is the header
 					
-					for tr in hours:
-						results[sensor]['hours'][PQ(tr[0]).text()] = PQ(tr[1]).text()
-	
-					if not PQ(hours[-1][1]).text():
-						logger.info("No value for the current hour yet, getting last value")
-						for i in range (1,now.hour):
-							if PQ(hours[-1-i][1]).text():
-								current = PQ(hours[-1-i][1]).text()
-								break
+					if hours:
+						for tr in hours:
+							results[sensor]['hours'][PQ(tr[0]).text()] = PQ(tr[1]).text()
+		
+						if not PQ(hours[-1][1]).text():
+							logger.info("No value for the current hour yet, getting last value")
+							for i in range (1,now.hour):
+								if PQ(hours[-1-i][1]).text():
+									current = PQ(hours[-1-i][1]).text()
+									break
+						else:
+							current = PQ(hours[-1][1]).text()
+							
+						results[sensor]['current'] = current
 					else:
-						current = PQ(hours[-1][1]).text()
-						
-					results[sensor]['current'] = current
+						results[sensor]['current'] = None
+						logger.info("Can't get values! Day has probably change, and the list is empty.")
 						
 			self.sensorValues = results
 			return results
@@ -138,12 +142,3 @@ class AirQ():
 		else:
 			logger.error("No sensors at the current location")
 			return False
-
-		
-a = AirQ(rs="430", ss="186") # Turku = 430, Turun kauppatori = 186
-sensors = a.getSensors() # Get sensors
-values = a.getSensorValues() # Get sensor values
-print values # Prints the values
-
-for sensor in sensors: # For all sensors 
-	print sensor, ' : ' ,values[sensor]['current'] # Print the sensor and its current value
